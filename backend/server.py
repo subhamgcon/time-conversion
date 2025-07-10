@@ -294,16 +294,10 @@ async def add_saved_timezone(request: SavedTimezoneCreate):
         region=tz_info["region"]
     )
 
-@api_router.delete("/saved-timezones/{timezone_id}")
+@api_router.delete("/saved-timezones/{timezone_id:path}")
 async def remove_saved_timezone(timezone_id: str):
     """Remove a timezone from saved list"""
     logger.info(f"DELETE request for timezone_id: '{timezone_id}' (type: {type(timezone_id)})")
-    
-    # Debug: Check what's in the database
-    all_docs = await db.saved_timezones.find().to_list(100)
-    logger.info(f"Current saved timezones in DB: {len(all_docs)}")
-    for doc in all_docs:
-        logger.info(f"  - timezone_id: '{doc.get('timezone_id')}' (type: {type(doc.get('timezone_id'))})")
     
     result = await db.saved_timezones.delete_one({"timezone_id": timezone_id})
     logger.info(f"Delete result: deleted_count = {result.deleted_count}")
