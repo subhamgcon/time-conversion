@@ -204,6 +204,16 @@ class TimezoneAPITester:
     
     def test_saved_timezones_crud(self):
         """Test 6: Saved Timezones CRUD Operations"""
+        # Clean up any existing data first
+        try:
+            response = self.session.get(f"{API_URL}/saved-timezones")
+            if response.status_code == 200:
+                existing = response.json()
+                for tz in existing:
+                    self.session.delete(f"{API_URL}/saved-timezones/{tz['timezone_id']}")
+        except:
+            pass  # Ignore cleanup errors
+        
         # Test 6a: GET empty saved timezones
         try:
             response = self.session.get(f"{API_URL}/saved-timezones")
@@ -244,7 +254,7 @@ class TimezoneAPITester:
                     self.log_test("Add Saved Timezone", False, "Missing required fields")
                     return False
             else:
-                self.log_test("Add Saved Timezone", False, f"Status code: {response.status_code}")
+                self.log_test("Add Saved Timezone", False, f"Status code: {response.status_code}, Response: {response.text}")
                 return False
         except Exception as e:
             self.log_test("Add Saved Timezone", False, f"Exception: {str(e)}")
@@ -272,7 +282,7 @@ class TimezoneAPITester:
             self.log_test("Get Saved Timezones (With Data)", False, f"Exception: {str(e)}")
             return False
         
-        # Test 6d: DELETE the saved timezone
+        # Test 6d: DELETE the saved timezone (using timezone_id, not UUID)
         try:
             if self.saved_timezone_id:
                 response = self.session.delete(f"{API_URL}/saved-timezones/{self.saved_timezone_id}")
@@ -280,12 +290,21 @@ class TimezoneAPITester:
                 if response.status_code == 200:
                     data = response.json()
                     if 'message' in data:
-                        self.log_test("Delete Saved Timezone", True, "Timezone removed successfully")
-                        return True
+                        # Verify deletion worked
+                        verify_response = self.session.get(f"{API_URL}/saved-timezones")
+                        if verify_response.status_code == 200:
+                            remaining = verify_response.json()
+                            if not any(tz['timezone_id'] == self.saved_timezone_id for tz in remaining):
+                                self.log_test("Delete Saved Timezone", True, "Timezone removed successfully")
+                                return True
+                            else:
+                                self.log_test("Delete Saved Timezone", False, "Timezone still exists after deletion")
+                        else:
+                            self.log_test("Delete Saved Timezone", False, "Could not verify deletion")
                     else:
                         self.log_test("Delete Saved Timezone", False, "No message in response")
                 else:
-                    self.log_test("Delete Saved Timezone", False, f"Status code: {response.status_code}")
+                    self.log_test("Delete Saved Timezone", False, f"Status code: {response.status_code}, Response: {response.text}")
             else:
                 self.log_test("Delete Saved Timezone", False, "No timezone ID to delete")
         except Exception as e:
